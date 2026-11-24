@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>随手记</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --text:#1b1f26; --muted:#8b919c;
+  --line:#e8eaee; --brand:#3b6ef0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;
+  background:var(--bg);color:var(--text);font-size:15px;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* 顶栏 */
+header{
+  flex:none;display:flex;align-items:baseline;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background:#fff;border-bottom:1px solid var(--line);
+}
+header h1{margin:0;font-size:17px;font-weight:600}
+header .sub{font-size:12px;color:var(--muted)}
+
+/* 内容区 */
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 24px}
+.page{display:none}
+.page.active{display:block}
+
+/* 底部导航 */
+#tabbar{
+  flex:none;display:flex;background:#fff;border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+#tabbar button{
+  flex:1;border:0;background:none;padding:8px 0 9px;cursor:pointer;
+  font:inherit;font-size:11px;color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .15s;
+}
+#tabbar button .ico{font-size:19px;line-height:1}
+#tabbar button.active{color:var(--brand);font-weight:600}
+
+/* 分类标签 */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:none;border:1px solid var(--line);background:#fff;color:#5a616c;
+  padding:7px 14px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer;
+}
+.chip.active{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+
+/* 卡片 */
+.card{
+  position:relative;background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px;
+  box-shadow:0 1px 2px rgba(16,24,40,.05),0 0 0 1px rgba(16,24,40,.03);overflow:hidden;
+}
+
+/* —— 流水记录条目 —— */
+.item{padding-left:16px}
+.item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.item.editable{cursor:pointer;transition:transform .12s,box-shadow .12s}
+.item.editable:active{transform:scale(.985);box-shadow:0 0 0 2px rgba(59,110,240,.2)}
+.item-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+  padding:2px 9px;border-radius:999px;white-space:nowrap;flex:none}
+.time{font-size:12px;color:var(--muted);flex:none;white-space:nowrap}
+.item-body{font-size:15px;line-height:1.6;color:#2b3038;white-space:pre-wrap;word-break:break-word}
+
+/* —— 浏览页：按天合并的卡片 —— */
+.day-card{padding:12px 14px 4px}
+.day-head{display:flex;align-items:baseline;gap:8px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+.day-date{font-size:16px;font-weight:700;letter-spacing:.01em}
+.day-week{font-size:12px;color:var(--muted)}
+.type-group{position:relative;margin:12px 0 8px;padding-left:11px}
+.type-group::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;border-radius:2px;background:var(--accent)}
+.type-title{margin-bottom:7px}
+.entry{display:flex;gap:9px;margin-bottom:7px;font-size:14.5px;line-height:1.6}
+.entry:last-child{margin-bottom:0}
+.e-time{flex:none;font-size:12px;color:var(--muted);padding-top:2px;font-variant-numeric:tabular-nums}
+.e-body{white-space:pre-wrap;word-break:break-word;color:#2b3038}
+
+/* 输入页 */
+.tip{font-size:12px;color:var(--muted);margin:0 0 12px 2px;line-height:1.6}
+.input-card{
+  background:#fff;border-radius:14px;padding:12px 14px 14px;margin-bottom:14px;
+  border-left:3px solid var(--accent);
+  box-shadow:0 1px 2px rgba(16,24,40,.05),0 0 0 1px rgba(16,24,40,.03);
+}
+.input-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+textarea{
+  width:100%;border:0;outline:none;resize:none;padding:0;background:transparent;
+  font:inherit;font-size:15px;line-height:1.6;color:var(--text);min-height:92px;
+}
+textarea::placeholder{color:#b9bec7}
+
+/* 空状态 */
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:56px 20px;line-height:1.9}
+.empty .big{display:block;font-size:30px;margin-bottom:10px}
+
+/* —— 导出页 —— */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.stat{
+  background:#fff;border-radius:14px;padding:14px 16px;border-left:3px solid var(--accent);
+  box-shadow:0 1px 2px rgba(16,24,40,.05),0 0 0 1px rgba(16,24,40,.03);
+}
+.stat .n{font-size:24px;font-weight:700;line-height:1.1;color:var(--accent);font-variant-numeric:tabular-nums}
+.stat .l{font-size:12px;color:var(--muted);margin-top:3px}
+
+.export-card h3{margin:0 0 8px;font-size:15px;font-weight:600}
+.export-card p{margin:0 0 10px;font-size:13px;line-height:1.7;color:#4a515c}
+.export-card ul{margin:0 0 14px;padding-left:18px;font-size:13px;line-height:1.8;color:#4a515c}
+.export-card li::marker{color:var(--brand)}
+
+.btn-export{
+  width:100%;padding:14px 0;border:0;border-radius:12px;
+  background:var(--brand);color:#fff;font:inherit;font-size:15px;font-weight:600;
+  cursor:pointer;transition:opacity .15s,transform .12s;
+}
+.btn-export:active{transform:scale(.98)}
+.btn-export:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-export + .btn-export{margin-top:10px}
+.btn-export.share{background:#0fa26a}
+.hint{margin:10px 0 0 !important;font-size:12px !important;color:var(--muted) !important;text-align:left}
+.hint b{color:#4a515c}
+
+/* 编辑弹层 */
+#editor{
+  position:fixed;inset:0;z-index:50;display:none;align-items:flex-end;
+  background:rgba(16,20,28,.42);
+}
+#editor.show{display:flex;animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{
+  width:100%;background:#fff;border-radius:18px 18px 0 0;
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+  animation:up .22s cubic-bezier(.2,.8,.3,1);
+  max-height:92vh;overflow-y:auto;
+}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet h2{margin:0 0 12px;font-size:15px;font-weight:600}
+.type-picker{display:flex;gap:8px}
+.type-picker button{
+  flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--line);background:#fff;
+  font:inherit;font-size:13px;color:#5a616c;cursor:pointer;
+}
+.type-picker button.active{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+
+/* 编辑弹层：日期 / 时间 */
+.dt-row{display:flex;gap:10px;margin:12px 0 0}
+.dt-row label{
+  flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;
+  font-size:12px;color:var(--muted);
+}
+.dt-row input{
+  width:100%;min-width:0;min-height:40px;box-sizing:border-box;
+  border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fafbfc;
+  font:inherit;font-size:14px;color:var(--text);outline:none;
+  -webkit-appearance:none;appearance:none;
+}
+.dt-row input:focus{border-color:var(--brand);background:#fff}
+
+.sheet textarea{
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+  min-height:120px;margin:12px 0 14px;background:#fafbfc;
+}
+.sheet-actions{display:flex;gap:10px}
+.sheet-actions button{
+  flex:1;padding:12px 0;border:0;border-radius:12px;cursor:pointer;
+  font:inherit;font-size:15px;font-weight:600;
+}
+.btn-ghost{background:#f1f3f6;color:#4a515c}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-danger{background:#fdeceb;color:#d8433f;flex:0 0 82px}
+
+/* 提示条 */
+#toast{
+  position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));
+  transform:translate(-50%,10px);opacity:0;pointer-events:none;z-index:80;
+  background:rgba(28,32,40,.9);color:#fff;font-size:13px;
+  padding:9px 16px;border-radius:999px;max-width:80vw;transition:.22s;text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* —— 优化新增 —— */
+/* 屏幕外卡片跳过渲染，记录多时滚动更顺 */
+.item,.day-card{content-visibility:auto;contain-intrinsic-size:auto 120px}
+/* 加载更多 */
+.btn-more{
+  display:block;width:auto;margin:12px auto 0;padding:9px 20px;
+  border:1px solid var(--line);background:#fff;color:#5a616c;
+  border-radius:999px;font:inherit;font-size:13px;cursor:pointer;
+}
+.btn-more:active{background:#f4f5f7}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>随手记</h1>
+  <span class="sub" id="pageSub">输入</span>
+</header>
+
+<main>
+  <!-- ① 浏览页（只读，按天合并，默认显示「日记」） -->
+  <section class="page" id="page-browse">
+    <div class="chips" id="browseChips">
+      <button class="chip" data-filter="all">全部</button>
+      <button class="chip active" data-filter="diary">📔 日记</button>
+      <button class="chip" data-filter="thought">💡 心得</button>
+      <button class="chip" data-filter="remind">⏰ 提醒</button>
+    </div>
+    <div id="browseList"></div>
+  </section>
+
+  <!-- ② 流水记录（可修改内容 / 类别 / 日期 / 时间） -->
+  <section class="page" id="page-flow">
+    <p class="tip">按时间倒序排列 · 点击任意记录即可修改内容 / 类别 / 日期 / 时间</p>
+    <div id="flowList"></div>
+  </section>
+
+  <!-- ③ 输入页（默认板块，回车即保存） -->
+  <section class="page active" id="page-input">
+    <p class="tip">💡 输入内容后按「回车」即可保存为一条记录，可继续输入下一条<br>（Shift + 回车 换行；离开本页时未提交的内容也会自动保存）</p>
+
+    <div class="input-card" style="--accent:#3b6ef0">
+      <div class="input-head">
+        <span class="badge" style="color:#3b6ef0;background:#3b6ef01f">📔 日记</span>
+      </div>
+      <textarea class="input-area" data-type="diary" placeholder="今天发生了什么…（回车保存）"></textarea>
+    </div>
+
+    <div class="input-card" style="--accent:#e0a020">
+      <div class="input-head">
+        <span class="badge" style="color:#e0a020;background:#e0a0201f">💡 心得</span>
+      </div>
+      <textarea class="input-area" data-type="thought" placeholder="有什么感悟或收获…（回车保存）"></textarea>
+    </div>
+
+    <div class="input-card" style="--accent:#e05561">
+      <div class="input-head">
+        <span class="badge" style="color:#e05561;background:#e055611f">⏰ 提醒</span>
+      </div>
+      <textarea class="input-area" data-type="remind" placeholder="别忘了……（回车保存）"></textarea>
+    </div>
+  </section>
+
+  <!-- ④ 导出页 -->
+  <section class="page" id="page-export">
+    <div class="stat-grid" id="exportStats"></div>
+
+    <div class="card export-card">
+      <h3>📤 导出为 Excel</h3>
+      <p>把「浏览」「流水记录」「输入」三个板块的全部数据打包导出为一个 Excel 文件（.xlsx），包含 4 个工作表：</p>
+      <ul>
+        <li>全部记录（按时间倒序）</li>
+        <li>日记 / 心得 / 提醒（分类型）</li>
+      </ul>
+      <p>每行包含：序号、类型、内容、日期、时间、是否修改过。</p>
+
+      <button class="btn-export" id="btnExport">⬇️ 导出并下载 Excel 文件</button>
+      <button class="btn-export share" id="btnShare" style="display:none">📲 分享到 WPS 打开</button>
+
+      <p class="hint">
+        <b>用 WPS 打开：</b><br>
+        ① 点上方按钮导出后，文件会保存到「下载 / 文件」中；<br>
+        ② 在文件管理器里点击该 .xlsx 文件，系统会弹出「打开方式」；<br>
+        ③ 选择 <b>WPS Office</b> 即可（也可设为默认）。<br>
+        若手机支持分享，可直接点「分享到 WPS 打开」，在分享面板中选择 WPS。
+      </p>
+      <p class="hint" id="exportHint"></p>
+    </div>
+  </section>
+</main>
+
+<nav id="tabbar">
+  <button data-tab="browse"><span class="ico">📖</span>浏览</button>
+  <button data-tab="flow"><span class="ico">📋</span>流水记录</button>
+  <button data-tab="input" class="active"><span class="ico">✏️</span>输入</button>
+  <button data-tab="export"><span class="ico">📤</span>导出</button>
+</nav>
+
+<!-- 编辑弹层 -->
+<div id="editor">
+  <div class="sheet">
+    <h2>修改记录</h2>
+    <div class="type-picker" id="editTypes">
+      <button data-type="diary">📔 日记</button>
+      <button data-type="thought">💡 心得</button>
+      <button data-type="remind">⏰ 提醒</button>
+    </div>
+
+    <div class="dt-row">
+      <label>日期
+        <input type="date" id="editDate">
+      </label>
+      <label>时间
+        <input type="time" id="editTime">
+      </label>
+    </div>
+
+    <textarea id="editText" placeholder="内容"></textarea>
+    <div class="sheet-actions">
+      <button class="btn-danger" id="btnDelete">删除</button>
+      <button class="btn-ghost" id="btnCancel">取消</button>
+      <button class="btn-primary" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============ 常量与数据 ============ */
+  const STORE_KEY = 'notebook.records.v1';
+  const TYPES = {
+    diary:   { label: '日记', icon: '📔', color: '#3b6ef0' },
+    thought: { label: '心得', icon: '💡', color: '#e0a020' },
+    remind:  { label: '提醒', icon: '⏰', color: '#e05561' }
+  };
+  const TITLES = { browse: '浏览', flow: '流水记录', input: '输入', export: '导出' };
+  const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+  const FLOW_PAGE = 200;
+
+  let records      = load();
+  let lastTs       = records.reduce((m, r) => Math.max(m, r.time || 0), 0);
+  let currentTab   = 'input';
+  let browseFilter = 'diary';
+  let editingId    = null;
+  let editingType  = 'diary';
+  let flowShown    = FLOW_PAGE;
+
+  let lastExportBlob = null;
+  let lastExportName = '';
+
+  /* 脏标记：某页数据变了才重渲染 */
+  const dirty = { browse: true, flow: true, export: true };
+  function markDirty(which) {
+    if (which) dirty[which] = true;
+    else { dirty.browse = dirty.flow = dirty.export = true; }
+  }
+
+  const $  = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+  /* ============ 存储 ============ */
+  function load() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  let persistTimer = 0;
+  function persist(force) {
+    const write = () => {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(records)); }
+      catch (e) { toast('本地存储失败'); }
+    };
+    if (force) { clearTimeout(persistTimer); write(); return; }
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(write, 200);
+  }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function nextTs() {
+    let t = Date.now();
+    if (t <= lastTs) t = lastTs + 1;
+    lastTs = t;
+    return t;
+  }
+
+  /* ============ 工具 ============ */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+  const pad = n => (n < 10 ? '0' : '') + n;
+  const WEEK = '日一二三四五六';
+
+  function dayKey(ts) { const d = new Date(ts); return d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); }
+
+  function dayTitle(ts) {
+    const d = new Date(ts), now = new Date();
+    const prefix = d.getFullYear() === now.getFullYear() ? '' : d.getFullYear() + '年';
+    return prefix + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  }
+  function weekTitle(ts) { return '周' + WEEK[new Date(ts).getDay()]; }
+
+  function fullStamp(ts) {
+    const d = new Date(ts), now = new Date();
+    const prefix = d.getFullYear() === now.getFullYear() ? '' : d.getFullYear() + '年';
+    return prefix + (d.getMonth() + 1) + '月' + d.getDate() + '日 '
+         + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function hhmm(ts) { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+
+  function dateValue(ts) {
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function timeValue(ts) {
+    const d = new Date(ts);
+    return pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function ymd(ts) {
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /* rAF 合并 autoGrow，避免每次输入都强制同步布局 */
+  let growRaf = 0;
+  function autoGrow(el) {
+    if (!el) return;
+    cancelAnimationFrame(growRaf);
+    growRaf = requestAnimationFrame(() => {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    });
+  }
+
+  let toastEl = null, toastTimer = null;
+  function toast(msg, ms) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.id = 'toast';
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms || 1800);
+  }
+
+  /* ============ 渲染：流水记录条目 ============ */
+  function flowItemHTML(r) {
+    const t = TYPES[r.type] || TYPES.diary;
+    return `<article class="card item editable" data-id="${r.id}" style="--accent:${t.color}">
+        <div class="item-head">
+          <span class="badge" style="color:${t.color};background:${t.color}1f">${t.icon} ${t.label}</span>
+          <span class="time">${fullStamp(r.time)}${r.edited ? ' ✎' : ''}</span>
+        </div>
+        <div class="item-body">${esc(r.content)}</div>
+      </article>`;
+  }
+
+  /* 新增记录时增量插入到列表头部，不重排整个列表 */
+  function prependFlowItem(r) {
+    const host = $('#flowList');
+    if (!host) return;
+    if (host.querySelector('.empty')) host.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.innerHTML = flowItemHTML(r);
+    host.insertBefore(wrap.firstElementChild, host.firstChild);
+  }
+
+  /* ============ 渲染：浏览页 ============ */
+  function renderBrowse() {
+    const host = $('#browseList');
+    const list = records.filter(r => browseFilter === 'all' || r.type === browseFilter);
+
+    if (!list.length) {
+      host.innerHTML = `<div class="empty"><span class="big">🗒️</span>${
+        browseFilter === 'all' ? '这里还没有内容<br>去「输入」页写点什么吧' : '该类别下还没有记录'
+      }</div>`;
+      return;
+    }
+
+    const dayMap = new Map();
+    list.forEach(r => {
+      const k = dayKey(r.time);
+      if (!dayMap.has(k)) dayMap.set(k, { time: r.time, items: [] });
+      dayMap.get(k).items.push(r);
+    });
+    const days = [...dayMap.values()].sort((a, b) => b.time - a.time);
+
+    host.innerHTML = days.map(day => {
+      const groups = Object.keys(TYPES).map(type => {
+        const items = day.items.filter(r => r.type === type)
+                               .sort((a, b) => a.time - b.time);
+        if (!items.length) return '';
+        const t = TYPES[type];
+        const entries = items.map(r =>
+          `<div class="entry">
+             <span class="e-time">${hhmm(r.time)}</span>
+             <span class="e-body">${esc(r.content)}</span>
+           </div>`).join('');
+        return `<div class="type-group" style="--accent:${t.color}">
+            <div class="type-title">
+              <span class="badge" style="color:${t.color};background:${t.color}1f">${t.icon} ${t.label}</span>
+            </div>
+            ${entries}
+          </div>`;
+      }).join('');
+
+      return `<article class="card day-card">
+          <div class="day-head">
+            <span class="day-date">${dayTitle(day.time)}</span>
+            <span class="day-week">${weekTitle(day.time)}</span>
+          </div>
+          ${groups}
+        </article>`;
+    }).join('');
+  }
+
+  /* ============ 渲染：流水记录（分页，默认最多 200 条） ============ */
+  function renderFlow() {
+    const host = $('#flowList');
+    const all = records.slice().sort((a, b) => b.time - a.time);
+    if (!all.length) {
+      host.innerHTML = `<div class="empty"><span class="big">📋</span>还没有流水记录<br>在「输入」页写点东西吧</div>`;
+      return;
+    }
+    const list = all.slice(0, flowShown);
+    host.innerHTML = list.map(flowItemHTML).join('')
+      + (all.length > flowShown
+          ? `<button class="btn-more" id="loadMore">加载更多（还有 ${all.length - flowShown} 条）</button>`
+          : '');
+  }
+
+  /* ============ 渲染：导出页 ============ */
+  function renderExport() {
+    const total = records.length;
+    const counts = { diary: 0, thought: 0, remind: 0 };
+    const days = new Set();
+    records.forEach(r => {
+      if (counts[r.type] != null) counts[r.type]++;
+      days.add(dayKey(r.time));
+    });
+
+    $('#exportStats').innerHTML = `
+      <div class="stat" style="--accent:var(--brand)">
+        <div class="n">${total}</div><div class="l">总记录</div>
+      </div>
+      <div class="stat" style="--accent:${TYPES.diary.color}">
+        <div class="n">${counts.diary}</div><div class="l">📔 日记</div>
+      </div>
+      <div class="stat" style="--accent:${TYPES.thought.color}">
+        <div class="n">${counts.thought}</div><div class="l">💡 心得</div>
+      </div>
+      <div class="stat" style="--accent:${TYPES.remind.color}">
+        <div class="n">${counts.remind}</div><div class="l">⏰ 提醒</div>
+      </div>`;
+
+    $('#btnExport').disabled = total === 0;
+    $('#btnShare').disabled = total === 0;
+    $('#exportHint').innerHTML = total === 0
+      ? '暂无数据，先去「输入」页写点东西吧'
+      : `共 ${total} 条记录，覆盖 ${days.size} 天`;
+
+    const canShareFile = typeof navigator.share === 'function'
+      && typeof navigator.canShare === 'function'
+      && (() => {
+        try {
+          return navigator.canShare({
+            files: [new File(['x'], 'test.xlsx', { type: XLSX_MIME })]
+          });
+        } catch (e) { return false; }
+      })();
+
+    $('#btnShare').style.display = canShareFile ? 'block' : 'none';
+  }
+
+  /* 只刷新当前页（若该页脏） */
+  function refreshCurrent() {
+    if (currentTab === 'browse' && dirty.browse) { renderBrowse(); dirty.browse = false; }
+    if (currentTab === 'flow'   && dirty.flow)   { renderFlow();   dirty.flow   = false; }
+    if (currentTab === 'export' && dirty.export) { renderExport(); dirty.export = false; }
+  }
+
+  /* ============ 导出 Excel ============ */
+  const XLSX_SOURCES = [
+    'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ];
+  let xlsxPromise = null;
+
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (xlsxPromise) return xlsxPromise;
+
+    xlsxPromise = (async () => {
+      for (const src of XLSX_SOURCES) {
+        try {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.async = true;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('load fail'));
+            document.head.appendChild(s);
+          });
+          if (window.XLSX) return window.XLSX;
+        } catch (e) { /* 换下一个源 */ }
+      }
+      throw new Error('Excel 组件加载失败');
+    })();
+
+    return xlsxPromise;
+  }
+
+  function buildSheetRows(list) {
+    const rows = [['序号', '类型', '内容', '日期', '时间', '修改过']];
+    list.forEach((r, i) => {
+      rows.push([
+        i + 1,
+        (TYPES[r.type] || TYPES.diary).label,
+        r.content,
+        ymd(r.time),
+        hhmm(r.time),
+        r.edited ? '是' : '否'
+      ]);
+    });
+    return rows;
+  }
+
+  function fileStamp() {
+    const d = new Date();
+    return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate())
+         + '_' + pad(d.getHours()) + pad(d.getMinutes());
+  }
+
+  async function buildXlsxArrayBuffer() {
+    const XLSX = await loadXLSX();
+    const wb = XLSX.utils.book_new();
+    const allSorted = records.slice().sort((a, b) => b.time - a.time);
+
+    const wsAll = XLSX.utils.aoa_to_sheet(buildSheetRows(allSorted));
+    wsAll['!cols'] = [{ wch: 6 }, { wch: 8 }, { wch: 46 }, { wch: 12 }, { wch: 8 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, wsAll, '全部记录');
+
+    Object.keys(TYPES).forEach(type => {
+      const list = allSorted.filter(r => r.type === type);
+      if (!list.length) return;
+      const ws = XLSX.utils.aoa_to_sheet(buildSheetRows(list));
+      ws['!cols'] = [{ wch: 6 }, { wch: 8 }, { wch: 46 }, { wch: 12 }, { wch: 8 }, { wch: 8 }];
+      XLSX.utils.book_append_sheet(wb, ws, TYPES[type].label);
+    });
+
+    return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.type = blob.type;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 1500);
+  }
+
+  async function doExport() {
+    if (!records.length) { toast('暂无数据可导出'); return; }
+
+    const btn = $('#btnExport');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '正在生成…';
+
+    try {
+      const buf = await buildXlsxArrayBuffer();
+      const blob = new Blob([buf], { type: XLSX_MIME });
+      const name = '随手记_' + fileStamp() + '.xlsx';
+
+      lastExportBlob = blob;
+      lastExportName = name;
+
+      downloadBlob(blob, name);
+      toast('已导出 ' + records.length + ' 条记录，请在文件管理器中选择 WPS 打开', 3200);
+    } catch (e) {
+      toast('导出失败：' + ((e && e.message) || '未知错误'), 2600);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  }
+
+  async function doShare() {
+    if (!records.length) { toast('暂无数据可分享'); return; }
+    if (typeof navigator.share !== 'function') {
+      toast('当前浏览器不支持分享，请先导出后在文件管理器中选择 WPS 打开', 3000);
+      return;
+    }
+
+    const btn = $('#btnShare');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '正在准备…';
+
+    try {
+      if (!lastExportBlob) {
+        const buf = await buildXlsxArrayBuffer();
+        lastExportBlob = new Blob([buf], { type: XLSX_MIME });
+        lastExportName = '随手记_' + fileStamp() + '.xlsx';
+      }
+
+      const file = new File([lastExportBlob], lastExportName, { type: XLSX_MIME });
+
+      if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+        toast('当前浏览器不支持分享文件，请先导出后手动选择 WPS 打开', 3000);
+        return;
+      }
+
+      await navigator.share({
+        files: [file],
+        title: '随手记导出',
+        text: '请在打开的分享面板中选择「WPS Office」'
+      });
+      toast('已打开分享面板，请选择 WPS Office', 2600);
+    } catch (e) {
+      if (e && e.name !== 'AbortError') {
+        toast('分享失败，请改用「导出并下载」后选择 WPS 打开', 3000);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  }
+
+  /* ============ 输入页 → 保存单条 ============ */
+  function saveInputArea(ta) {
+    const v = ta.value.trim();
+    if (!v) return false;
+    const rec = {
+      id: uid(),
+      type: ta.dataset.type,
+      content: v,
+      time: nextTs(),
+      edited: false
+    };
+    records.push(rec);
+    ta.value = '';
+    ta.style.height = '';
+    persist();
+
+    markDirty('browse');
+    markDirty('export');
+    if (currentTab === 'flow') prependFlowItem(rec);
+    else markDirty('flow');
+
+    return true;
+  }
+
+  function flushInputs() {
+    let n = 0;
+    $$('.input-area').forEach(ta => { if (saveInputArea(ta)) n++; });
+    if (n) {
+      persist(true);
+      toast(n === 1 ? '已自动保存 1 条记录' : `已自动保存 ${n} 条记录`);
+    }
+    return n;
+  }
+
+  /* ============ 切换板块 ============ */
+  function switchTab(name) {
+    if (currentTab === 'input' && name !== 'input') flushInputs();
+    currentTab = name;
+    $$('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+    $$('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    $('#pageSub').textContent = TITLES[name];
+    $('main').scrollTop = 0;
+    refreshCurrent();
+  }
+
+  /* ============ 编辑弹层 ============ */
+  function syncTypePicker() {
+    $$('#editTypes button').forEach(b => b.classList.toggle('active', b.dataset.type === editingType));
+  }
+  function openEditor(id) {
+    const r = records.find(x => x.id === id);
+    if (!r) return;
+    editingId = id;
+    editingType = r.type;
+    $('#editText').value = r.content;
+    $('#editDate').value = dateValue(r.time);
+    $('#editTime').value = timeValue(r.time);
+    syncTypePicker();
+    $('#editor').classList.add('show');
+    setTimeout(() => autoGrow($('#editText')), 0);
+  }
+  function closeEditor() {
+    $('#editor').classList.remove('show');
+    editingId = null;
+  }
+  function commitEdit() {
+    const r = records.find(x => x.id === editingId);
+    if (!r) { closeEditor(); return; }
+
+    const v = $('#editText').value.trim();
+    if (!v) { toast('内容不能为空'); return; }
+
+    const dStr = $('#editDate').value;
+    const tStr = $('#editTime').value || '00:00';
+    if (!dStr) { toast('请选择日期'); return; }
+
+    const dp = dStr.split('-').map(Number);
+    const tp = tStr.split(':').map(Number);
+    const ts = new Date(dp[0], (dp[1] || 1) - 1, dp[2] || 1,
+                        tp[0] || 0, tp[1] || 0, 0, 0).getTime();
+    if (!isFinite(ts)) { toast('日期或时间无效'); return; }
+
+    r.content = v;
+    r.type = editingType;
+    r.time = ts;
+    r.edited = true;
+    lastTs = Math.max(lastTs, ts);
+
+    persist(true);
+    closeEditor();
+    markDirty();
+    refreshCurrent();
+    toast('已保存修改');
+  }
+  function deleteRecord() {
+    if (!confirm('确定删除这条记录吗？')) return;
+    records = records.filter(x => x.id !== editingId);
+    persist(true);
+    closeEditor();
+    markDirty();
+    refreshCurrent();
+    toast('已删除');
+  }
+
+  /* ============ 事件绑定 ============ */
+  function bind() {
+    $('#tabbar').addEventListener('click', e => {
+      const b = e.target.closest('button[data-tab]');
+      if (b) switchTab(b.dataset.tab);
+    });
+
+    $('#browseChips').addEventListener('click', e => {
+      const b = e.target.closest('button[data-filter]');
+      if (!b) return;
+      browseFilter = b.dataset.filter;
+      $$('#browseChips .chip').forEach(c => c.classList.toggle('active', c === b));
+      renderBrowse();
+      dirty.browse = false;
+      $('main').scrollTop = 0;
+    });
+
+    $('#flowList').addEventListener('click', e => {
+      if (e.target.closest('#loadMore')) {
+        flowShown += FLOW_PAGE;
+        renderFlow();
+        return;
+      }
+      const card = e.target.closest('.item[data-id]');
+      if (card) openEditor(card.dataset.id);
+    });
+
+    $('#editTypes').addEventListener('click', e => {
+      const b = e.target.closest('button[data-type]');
+      if (!b) return;
+      editingType = b.dataset.type;
+      syncTypePicker();
+    });
+
+    $('#btnSave').addEventListener('click', commitEdit);
+    $('#btnCancel').addEventListener('click', closeEditor);
+    $('#btnDelete').addEventListener('click', deleteRecord);
+    $('#editor').addEventListener('click', e => { if (e.target.id === 'editor') closeEditor(); });
+
+    $('#btnExport').addEventListener('click', doExport);
+    $('#btnShare').addEventListener('click', doShare);
+
+    /* 输入页：回车即保存 */
+    document.addEventListener('keydown', e => {
+      const ta = e.target;
+      if (!ta || !ta.classList || !ta.classList.contains('input-area')) return;
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      if (e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      if (saveInputArea(ta)) toast('已保存，可继续输入下一条', 1400);
+    });
+
+    document.addEventListener('input', e => {
+      if (e.target.matches('.input-area, #editText')) autoGrow(e.target);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { flushInputs(); persist(true); }
+    });
+    window.addEventListener('pagehide', () => { flushInputs(); persist(true); });
+  }
+
+  /* ============ 启动 ============ */
+  // 默认在「输入」页，不再同步渲染隐藏页面，首屏更快
+  bind();
+
+  // 网络允许时，空闲预加载 Excel 组件，导出时秒开
+  (function preloadXlsx() {
+    const conn = navigator.connection;
+    if (conn && (conn.saveData || /2g|3g/i.test(conn.effectiveType || ''))) return;
+    const idle = window.requestIdleCallback || (f => setTimeout(f, 3000));
+    idle(() => { loadXLSX().catch(() => {}); }, { timeout: 8000 });
+  })();
+
+  /* ============ PWA ============ */
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
